@@ -97,10 +97,10 @@ def should_send_reminder(event, current_time):
         return False
 
     # 根据不同的提醒频率判断是否需要发送提醒
-    last_check = current_time - timedelta(minutes=1)  # 上一次检查时间
     freq = event.reminder_frequency
-
-    if freq == 'every_minute':
+    if freq == 'never':
+        return False
+    elif freq == 'every_minute':
         return True
     elif freq == 'every_5_minutes':
         return current_time.minute % 5 == 0
