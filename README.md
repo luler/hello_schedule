@@ -18,16 +18,26 @@ pip install -r requirements.txt
 
 ## 使用说明
 
-1. 运行应用
+1. 复制.env.example为.env,输入正确的smtp配置
+
+```angular2html
+DEBUG=false
+SMTP_SERVER=smtp.xxx.com
+SMTP_PORT=465
+SMTP_USER=admin@123.top
+SMTP_PASSWORD=123456
+```
+
+2. 运行应用
 
 ```bash
 python app.py
 ```
 
-2. 在浏览器中访问 http://localhost:5000
-3. 添加事件
-4. 设定通知配置
-5. 系统会按照通知规则自动邮箱通知
+3. 在浏览器中访问 http://localhost:5000
+4. 添加事件
+5. 设定通知配置
+6. 系统会按照通知规则自动邮箱通知
 
 ## 截图展示
 
