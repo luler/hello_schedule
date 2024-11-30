@@ -212,6 +212,12 @@
 <script>
     let editMode = false;
 
+    // 获取请求参数
+    function getQueryParam(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param) || '';
+    }
+
     // 验证表单数据
     function validateForm(formData) {
         if (!formData.title.trim()) {
@@ -363,7 +369,8 @@
             reminder_days: document.getElementById('reminder_days').value || '0',
             reminder_minutes: document.getElementById('reminder_minutes').value || '0',
             reminder_frequency: document.getElementById('reminder_frequency').value,
-            email: document.getElementById('email').value
+            email: document.getElementById('email').value,
+            open_id: getQueryParam('open_id'),
         };
 
         if (!validateForm(formData)) {
@@ -408,7 +415,7 @@
 
     // 获取所有事件
     function loadEvents() {
-        fetch('/api/events')
+        fetch('/api/events?open_id=' + getQueryParam('open_id'))
                 .then(response => response.json())
                 .then(events => {
                     const eventList = document.getElementById('eventList');
