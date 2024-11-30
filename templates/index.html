@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>事件提醒系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container { max-width: 960px; }
+        .event-list-container { margin-top: 10px; }
+        .card { margin-bottom: 10px; }
+        .card-body { padding: 0.8rem; }
+        .card-title { font-size: 1rem; margin-bottom: 0.5rem; }
+        .card-text { font-size: 0.875rem; margin-bottom: 0.5rem; }
+        .text-muted { font-size: 0.75rem; }
+        .modal-body { padding: 0.8rem; }
+        .mb-3 { margin-bottom: 0.5rem !important; }
+        .form-label { font-size: 0.875rem; margin-bottom: 0.2rem; }
+        .form-control { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+        .modal-title { font-size: 1rem; }
+        .btn { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+        .time-input-group {
+            display: flex;
+            gap: 5px;
+        }
+        .time-input-group .form-control {
+            width: auto;
+        }
+        .expired { 
+            opacity: 0.7; 
+            background-color: #f8f9fa;
+            border-left: 4px solid #6c757d;
+        }
+        .urgent { 
+            border-left: 4px solid #dc3545;
+            background-color: #fff5f5;
+        }
+        .warning { 
+            border-left: 4px solid #ffc107;
+            background-color: #fff9e6;
+        }
+        .safe { 
+            border-left: 4px solid #198754;
+            background-color: #f6fff9;
+        }
+        .remaining-time {
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 2px 0;
+        }
+        .expired .remaining-time {
+            color: #6c757d;
+            background-color: #e9ecef;
+        }
+        .urgent .remaining-time {
+            color: #dc3545;
+            background-color: #ffe6e6;
+        }
+        .warning .remaining-time {
+            color: #997404;
+            background-color: #fff3cd;
+        }
+        .safe .remaining-time {
+            color: #198754;
+            background-color: #d1e7dd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h4 class="mb-0">事件提醒系统</h4>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEventModal">
+                添加新事件
+            </button>
+        </div>
+        
+        <!-- 事件列表 -->
+        <div class="row g-2" id="eventList">
+            <!-- 事件卡片将通过JavaScript动态添加 -->
+        </div>
+    </div>
+
+    <!-- 添加事件模态框 -->
+    <div class="modal fade" id="addEventModal" tabindex="-1" aria-labelledby="addEventModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title" id="addEventModalLabel">添加新事件</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="formAlert" class="alert alert-danger d-none py-1 px-2 mb-2"></div>
+                    <form id="eventForm" onsubmit="submitForm(event)">
+                        <input type="hidden" id="eventId" value="">
+                        <div class="mb-2">
+                            <label for="title" class="form-label">标题</label>
+                            <textarea class="form-control form-control-sm" id="title" rows="2" required></textarea>
+                        </div>
+                        <div class="mb-2">
+                            <label for="expiry_date" class="form-label">到期时间</label>
+                            <div class="row g-1">
+                                <div class="col">
+                                    <input type="date" class="form-control form-control-sm" id="expiry_date" required>
+                                </div>
+                                <div class="col">
+                                    <input type="time" class="form-control form-control-sm" id="expiry_time" value="12:00" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">提前提醒时间</label>
+                            <div class="time-input-group">
+                                <input type="number" class="form-control form-control-sm" id="reminder_days" min="0" value="1" placeholder="天" required>
+                                <input type="number" class="form-control form-control-sm" id="reminder_minutes" min="0" max="59" value="30" placeholder="分钟" required>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label for="reminder_frequency" class="form-label">提醒频率</label>
+                            <select class="form-control form-control-sm" id="reminder_frequency" required>
+                                <option value="every_minute">每分钟</option>
+                                <option value="every_5_minutes">每5分钟</option>
+                                <option value="every_10_minutes">每10分钟</option>
+                                <option value="every_15_minutes">每15分钟</option>
+                                <option value="every_30_minutes">每30分钟</option>
+                                <option value="hourly">每小时</option>
+                                <option value="every_3_hours">每3小时</option>
+                                <option value="every_6_hours">每6小时</option>
+                                <option value="every_12_hours">每12小时</option>
+                                <option value="daily">每天</option>
+                                <option value="weekly">每周</option>
+                                <option value="monthly">每月</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="email" class="form-label">邮箱地址</label>
+                            <input type="email" class="form-control form-control-sm" id="email" required>
+                        </div>
+                        <div class="modal-footer p-0 pt-2">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+                            <button type="submit" class="btn btn-primary btn-sm">保存</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let editMode = false;
+        
+        // 验证表单数据
+        function validateForm(formData) {
+            if (!formData.title.trim()) {
+                showFormError('请输入标题');
+                return false;
+            }
+            if (!formData.expiry_date) {
+                showFormError('请选择到期日期和时间');
+                return false;
+            }
+            return true;
+        }
+
+        // 显示表单错误信息
+        function showFormError(message) {
+            const alert = document.getElementById('formAlert');
+            alert.textContent = message;
+            alert.classList.remove('d-none');
+        }
+
+        // 隐藏表单错误信息
+        function hideFormError() {
+            const alert = document.getElementById('formAlert');
+            alert.classList.add('d-none');
+        }
+
+        // 格式化剩余时间
+        function formatRemainingTime(remainingTime) {
+            if (!remainingTime) return '已过期';
+            return `${remainingTime.days}天${remainingTime.hours}小时${remainingTime.minutes}分钟`;
+        }
+
+        // 格式化提醒频率显示
+        function formatReminderFrequency(frequency) {
+            const frequencyMap = {
+                'every_minute': '每分钟',
+                'every_5_minutes': '每5分钟',
+                'every_10_minutes': '每10分钟',
+                'every_15_minutes': '每15分钟',
+                'every_30_minutes': '每30分钟',
+                'hourly': '每小时',
+                'every_3_hours': '每3小时',
+                'every_6_hours': '每6小时',
+                'every_12_hours': '每12小时',
+                'daily': '每天',
+                'weekly': '每周',
+                'monthly': '每月'
+            };
+            return frequencyMap[frequency] || frequency;
+        }
+
+        // 获取事件卡片的状态类
+        function getCardStatusClass(remainingTime) {
+            if (!remainingTime) return 'expired';
+            const totalMinutes = remainingTime.days * 24 * 60 + remainingTime.hours * 60 + remainingTime.minutes;
+            if (totalMinutes <= 24 * 60) return 'urgent';
+            if (totalMinutes <= 72 * 60) return 'warning';
+            return 'safe';
+        }
+
+        // 创建事件卡片
+        function createEventCard(event) {
+            const col = document.createElement('div');
+            col.className = 'col-md-6 col-lg-4';
+            
+            const statusClass = getCardStatusClass(event.remaining_time);
+            const card = document.createElement('div');
+            card.className = `card h-100 ${statusClass}`;
+            
+            card.innerHTML = `
+                <div class="card-body">
+                    <h5 class="card-title">${event.title}</h5>
+                    <p class="card-text mb-1">
+                        <small class="text-muted">
+                            到期时间: ${event.expiry_date}<br>
+                            距离到期: <span class="remaining-time">${formatRemainingTime(event.remaining_time)}</span><br>
+                            提醒设置: 提前${event.reminder_days}天${event.reminder_minutes}分钟<br>
+                            提醒频率: ${formatReminderFrequency(event.reminder_frequency)}<br>
+                            邮箱: ${event.email}<br>
+                            状态: ${event.is_active ? '活动' : '已停止'}
+                        </small>
+                    </p>
+                    <button class="btn btn-danger btn-sm" onclick="deleteEvent(${event.id})">删除</button>
+                    <button class="btn btn-primary btn-sm" onclick="editEvent(${event.id})">编辑</button>
+                </div>
+            `;
+            
+            col.appendChild(card);
+            return col;
+        }
+
+        // 删除事件
+        function deleteEvent(id) {
+            if (confirm('确定要删除这个事件吗？')) {
+                fetch(`/api/events/${id}`, {
+                    method: 'DELETE'
+                })
+                .then(() => loadEvents());
+            }
+        }
+
+        // 编辑事件
+        function editEvent(id) {
+            // 获取事件数据
+            fetch(`/api/events/${id}`)
+                .then(response => response.json())
+                .then(event => {
+                    // 填充表单
+                    document.getElementById('eventId').value = event.id;
+                    document.getElementById('title').value = event.title;
+                    
+                    // 设置到期时间
+                    const [date, time] = event.expiry_date.split(' ');
+                    document.getElementById('expiry_date').value = date;
+                    document.getElementById('expiry_time').value = time;
+                    
+                    // 设置提醒时间
+                    document.getElementById('reminder_days').value = event.reminder_days;
+                    document.getElementById('reminder_minutes').value = event.reminder_minutes;
+                    
+                    // 设置提醒频率
+                    document.getElementById('reminder_frequency').value = event.reminder_frequency;
+                    
+                    // 设置邮箱
+                    document.getElementById('email').value = event.email;
+                    
+                    // 更改模态框标题
+                    document.getElementById('addEventModalLabel').textContent = '编辑事件';
+                    
+                    // 打开模态框
+                    new bootstrap.Modal(document.getElementById('addEventModal')).show();
+                    editMode = true;
+                });
+        }
+
+        // 提交表单
+        function submitForm(event) {
+            event.preventDefault();
+            hideFormError();
+            
+            const eventId = document.getElementById('eventId').value;
+            const expiryDate = document.getElementById('expiry_date').value;
+            const expiryTime = document.getElementById('expiry_time').value;
+            
+            const formData = {
+                title: document.getElementById('title').value,
+                expiry_date: `${expiryDate} ${expiryTime}`,
+                reminder_days: document.getElementById('reminder_days').value || '0',
+                reminder_minutes: document.getElementById('reminder_minutes').value || '0',
+                reminder_frequency: document.getElementById('reminder_frequency').value,
+                email: document.getElementById('email').value
+            };
+            
+            if (!validateForm(formData)) {
+                return;
+            }
+
+            const url = eventId ? `/api/events/${eventId}` : '/api/events';
+            const method = eventId ? 'PUT' : 'POST';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(() => {
+                // 重置表单
+                event.target.reset();
+                document.getElementById('eventId').value = '';
+                document.getElementById('addEventModalLabel').textContent = '添加新事件';
+                editMode = false;
+                
+                // 关闭模态框
+                bootstrap.Modal.getInstance(document.getElementById('addEventModal')).hide();
+                
+                // 重新加载事件列表
+                loadEvents();
+            })
+            .catch(error => {
+                showFormError(error.error || '保存失败，请重试');
+            });
+        }
+
+        // 获取所有事件
+        function loadEvents() {
+            fetch('/api/events')
+                .then(response => response.json())
+                .then(events => {
+                    const eventList = document.getElementById('eventList');
+                    eventList.innerHTML = '';
+                    events.forEach(event => {
+                        const card = createEventCard(event);
+                        eventList.appendChild(card);
+                    });
+                })
+                .catch(error => {
+                    console.error('加载事件列表失败:', error);
+                });
+        }
+
+        // 页面加载时获取事件列表
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置日期输入框的默认值为明天
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const dateStr = tomorrow.toISOString().split('T')[0];
+            document.getElementById('expiry_date').value = dateStr;
+            
+            // 加载事件列表
+            loadEvents();
+        });
+    </script>
+</body>
+</html>
