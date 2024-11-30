@@ -433,11 +433,12 @@
     // 页面加载时获取事件列表
     document.addEventListener('DOMContentLoaded', function () {
         // 设置日期输入框的默认值为明天
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const dateStr = tomorrow.toISOString().split('T')[0];
+        const tomorrow = new Date(new Date().getTime() + 24 * 60 * 60 * 1000);
+        const year = tomorrow.getFullYear();
+        const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        const day = String(tomorrow.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         document.getElementById('expiry_date').value = dateStr;
-
         // 加载事件列表
         loadEvents();
     });
