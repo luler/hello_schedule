@@ -11,3 +11,5 @@ services:
       - 5000:5000
     volumes:
       - .:/app
+    environment:
+      - TZ=Asia/Shanghai
