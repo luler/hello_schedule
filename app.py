@@ -1,14 +1,15 @@
-from flask import Flask, request, jsonify, render_template
-from flask_sqlalchemy import SQLAlchemy
+import os
+import smtplib
 from datetime import datetime, timedelta
+from email.header import Header
+from email.mime.text import MIMEText
+
+import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-import smtplib
-from email.mime.text import MIMEText
-from email.header import Header
-import os
 from dotenv import load_dotenv
-import pytz
+from flask import Flask, request, jsonify, render_template
+from flask_sqlalchemy import SQLAlchemy
 
 # 加载.env文件
 load_dotenv()
@@ -17,6 +18,8 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///events.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+DEBUG = os.getenv("DEBUG", 'false').lower() in ['true', '1', 't', 'y', 'yes', 'on']
 
 # 从环境变量读取邮件配置
 SMTP_SERVER = os.getenv("SMTP_SERVER")
@@ -27,15 +30,18 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 # 设置中国时区
 china_tz = pytz.timezone('Asia/Shanghai')
 
+
 def get_china_time():
     """获取中国时间"""
     return datetime.now(china_tz)
+
 
 def to_china_time(dt):
     """将datetime对象转换为中国时间"""
     if dt.tzinfo is None:
         dt = pytz.utc.localize(dt)
     return dt.astimezone(china_tz)
+
 
 class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -62,10 +68,12 @@ class Event(db.Model):
         minutes = (delta.seconds % 3600) // 60
         return {'days': days, 'hours': hours, 'minutes': minutes}
 
+
 def generate_reminder_id(event_id):
     """生成提醒邮件的唯一标识符"""
     timestamp = get_china_time().strftime('%Y%m%d%H%M%S')
     return f"{event_id}-{timestamp}"
+
 
 def send_email(to_email, subject, content, reminder_id):
     try:
@@ -82,6 +90,7 @@ def send_email(to_email, subject, content, reminder_id):
     except Exception as e:
         print(f"发送邮件失败: {str(e)}")
         return False
+
 
 def should_send_reminder(event, current_time):
     """判断是否应该发送提醒"""
@@ -131,30 +140,31 @@ def should_send_reminder(event, current_time):
         return current_time.minute == 0 and current_time.hour == 0 and current_time.weekday() == 0
     elif freq == 'monthly':
         return current_time.minute == 0 and current_time.hour == 0 and current_time.day == 1
-    
+
     return False
+
 
 def check_events():
     with app.app_context():
         current_time = get_china_time()
         events = Event.query.filter_by(is_active=True).all()
-        
+
         for event in events:
             if current_time > to_china_time(event.expiry_date):
                 event.is_active = False
                 db.session.commit()
                 continue
-            
+
             if should_send_reminder(event, current_time):
                 remaining = event.remaining_time
                 reminder_id = generate_reminder_id(event.id)
-                
+
                 subject = f"事件提醒: {event.title} [ID: {reminder_id}]"
                 content = f"""
 距离到期还有: {remaining['days']}天{remaining['hours']}小时{remaining['minutes']}分钟
 到期时间: {to_china_time(event.expiry_date).strftime('%Y-%m-%d %H:%M')}
 """
-                
+
                 send_result = send_email(event.email, subject, content, reminder_id)
                 if send_result:
                     event.last_reminder_id = reminder_id
@@ -163,9 +173,11 @@ def check_events():
             else:
                 print(f"{subject}，当前不需要发送提醒")
 
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/api/events', methods=['POST'])
 def create_event():
@@ -187,6 +199,7 @@ def create_event():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+
 @app.route('/api/events', methods=['GET'])
 def get_events():
     # 按到期时间升序排序
@@ -204,12 +217,14 @@ def get_events():
         'last_reminder_id': event.last_reminder_id
     } for event in events])
 
+
 @app.route('/api/events/<int:event_id>', methods=['DELETE'])
 def delete_event(event_id):
     event = Event.query.get_or_404(event_id)
     db.session.delete(event)
     db.session.commit()
     return jsonify({"message": "事件已删除"}), 200
+
 
 @app.route('/api/events/<int:event_id>', methods=['GET'])
 def get_event(event_id):
@@ -227,11 +242,12 @@ def get_event(event_id):
         'last_reminder_id': event.last_reminder_id
     }), 200
 
+
 @app.route('/api/events/<int:event_id>', methods=['PUT'])
 def update_event(event_id):
     event = Event.query.get_or_404(event_id)
     data = request.json
-    
+
     try:
         if 'title' in data:
             event.title = data['title']
@@ -249,11 +265,12 @@ def update_event(event_id):
             event.email = data['email']
         if 'is_active' in data:
             event.is_active = bool(data['is_active'])
-            
+
         db.session.commit()
         return jsonify({"message": "事件更新成功"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
 
 def init_scheduler():
     scheduler = BackgroundScheduler(timezone=china_tz)
@@ -265,9 +282,10 @@ def init_scheduler():
     )
     scheduler.start()
 
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': # 判断是否是主进程
+    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':  # 判断是否是主进程
         init_scheduler()
-    app.run(debug=True)
+    app.run(debug=DEBUG, host='0.0.0.0', port=5000)
