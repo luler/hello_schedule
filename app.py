@@ -35,8 +35,8 @@ class Event(db.Model):
     reminder_minutes = db.Column(db.Integer, nullable=False, default=0)  # 提前分钟数
     reminder_frequency = db.Column(db.String(20), nullable=False)  # daily, weekly, monthly
     email = db.Column(db.String(120), nullable=False)
-    is_active = db.Column(db.Boolean, nullable=False, default='')
-    open_id = db.Column(db.String(50), default=True)
+    is_active = db.Column(db.Boolean, default=True)
+    open_id = db.Column(db.String(50), nullable=False, default='')
     created_at = db.Column(db.DateTime, default=datetime.now())
     last_reminder_id = db.Column(db.String(50))  # 最后一次发送的提醒邮件ID
 
