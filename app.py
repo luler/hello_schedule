@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from email.header import Header
 from email.mime.text import MIMEText
 
-import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
@@ -27,21 +26,6 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
-# 设置中国时区
-china_tz = pytz.timezone('Asia/Shanghai')
-
-
-def get_china_time():
-    """获取中国时间"""
-    return datetime.now(china_tz)
-
-
-def to_china_time(dt):
-    """将datetime对象转换为中国时间"""
-    if dt.tzinfo is None:
-        dt = pytz.utc.localize(dt)
-    return dt.astimezone(china_tz)
-
 
 class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -52,14 +36,14 @@ class Event(db.Model):
     reminder_frequency = db.Column(db.String(20), nullable=False)  # daily, weekly, monthly
     email = db.Column(db.String(120), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=get_china_time)
+    created_at = db.Column(db.DateTime, default=datetime.now())
     last_reminder_id = db.Column(db.String(50))  # 最后一次发送的提醒邮件ID
 
     @property
     def remaining_time(self):
         """计算距离到期还有多长时间"""
-        now = get_china_time()
-        expiry = to_china_time(self.expiry_date)
+        now = datetime.now()
+        expiry = self.expiry_date
         if now > expiry:
             return None
         delta = expiry - now
@@ -71,7 +55,7 @@ class Event(db.Model):
 
 def generate_reminder_id(event_id):
     """生成提醒邮件的唯一标识符"""
-    timestamp = get_china_time().strftime('%Y%m%d%H%M%S')
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     return f"{event_id}-{timestamp}"
 
 
@@ -98,7 +82,7 @@ def should_send_reminder(event, current_time):
         return False
 
     # 如果已过期，不发送提醒
-    if current_time > to_china_time(event.expiry_date):
+    if current_time > event.expiry_date:
         return False
 
     # 计算提醒时间
@@ -106,7 +90,7 @@ def should_send_reminder(event, current_time):
         days=event.reminder_days,
         minutes=event.reminder_minutes
     )
-    time_until_expiry = to_china_time(event.expiry_date) - current_time
+    time_until_expiry = event.expiry_date - current_time
 
     # 如果还没到提醒时间，不发送提醒
     if time_until_expiry > reminder_delta:
@@ -146,25 +130,23 @@ def should_send_reminder(event, current_time):
 
 def check_events():
     with app.app_context():
-        current_time = get_china_time()
+        current_time = datetime.now()
         events = Event.query.filter_by(is_active=True).all()
 
         for event in events:
-            if current_time > to_china_time(event.expiry_date):
+            if current_time > event.expiry_date:
                 event.is_active = False
                 db.session.commit()
                 continue
 
+            reminder_id = generate_reminder_id(event.id)
+            subject = f"事件提醒: {event.title} [ID: {reminder_id}]"
             if should_send_reminder(event, current_time):
                 remaining = event.remaining_time
-                reminder_id = generate_reminder_id(event.id)
-
-                subject = f"事件提醒: {event.title} [ID: {reminder_id}]"
                 content = f"""
 距离到期还有: {remaining['days']}天{remaining['hours']}小时{remaining['minutes']}分钟
-到期时间: {to_china_time(event.expiry_date).strftime('%Y-%m-%d %H:%M')}
+到期时间: {event.expiry_date.strftime('%Y-%m-%d %H:%M')}
 """
-
                 send_result = send_email(event.email, subject, content, reminder_id)
                 if send_result:
                     event.last_reminder_id = reminder_id
@@ -184,7 +166,6 @@ def create_event():
     data = request.json
     try:
         expiry_date = datetime.strptime(data['expiry_date'], '%Y-%m-%d %H:%M')
-        expiry_date = china_tz.localize(expiry_date)
         event = Event(
             title=data['title'],
             expiry_date=expiry_date,
@@ -207,7 +188,7 @@ def get_events():
     return jsonify([{
         'id': event.id,
         'title': event.title,
-        'expiry_date': to_china_time(event.expiry_date).strftime('%Y-%m-%d %H:%M'),
+        'expiry_date': event.expiry_date.strftime('%Y-%m-%d %H:%M'),
         'reminder_days': event.reminder_days,
         'reminder_minutes': event.reminder_minutes,
         'reminder_frequency': event.reminder_frequency,
@@ -232,7 +213,7 @@ def get_event(event_id):
     return jsonify({
         'id': event.id,
         'title': event.title,
-        'expiry_date': to_china_time(event.expiry_date).strftime('%Y-%m-%d %H:%M'),
+        'expiry_date': event.expiry_date.strftime('%Y-%m-%d %H:%M'),
         'reminder_days': event.reminder_days,
         'reminder_minutes': event.reminder_minutes,
         'reminder_frequency': event.reminder_frequency,
@@ -253,7 +234,7 @@ def update_event(event_id):
             event.title = data['title']
         if 'expiry_date' in data:
             expiry_date = datetime.strptime(data['expiry_date'], '%Y-%m-%d %H:%M')
-            expiry_date = china_tz.localize(expiry_date)
+            print(expiry_date)
             event.expiry_date = expiry_date
         if 'reminder_days' in data:
             event.reminder_days = int(data['reminder_days'])
@@ -273,7 +254,7 @@ def update_event(event_id):
 
 
 def init_scheduler():
-    scheduler = BackgroundScheduler(timezone=china_tz)
+    scheduler = BackgroundScheduler()
     scheduler.add_job(
         check_events,
         CronTrigger(minute='*'),  # 每分钟检查一次
