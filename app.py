@@ -56,8 +56,8 @@ class Event(db.Model):
 
 def generate_reminder_id(event_id):
     """生成提醒邮件的唯一标识符"""
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    return f"{event_id}-{timestamp}"
+    timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+    return f"{timestamp}-{event_id}"
 
 
 def send_email(to_email, subject, content, reminder_id):
@@ -145,8 +145,25 @@ def check_events():
             if should_send_reminder(event, current_time):
                 remaining = event.remaining_time
                 content = f"""
-距离到期还有: {remaining['days']}天{remaining['hours']}小时{remaining['minutes']}分钟
-到期时间: {event.expiry_date.strftime('%Y-%m-%d %H:%M')}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="renderer" content="webkit">
+    <meta name="google" content="notranslate">
+    <meta name="format-detection" content="telephone=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>' . $subject . '</title>
+</head>
+<body>
+<table>
+<tr><td align="right" style="word-break: keep-all">距离到期还有：</td><td style="word-break: break-all">{remaining['days']}天{remaining['hours']}小时{remaining['minutes']}分钟</td></tr>
+<tr><td align="right" style="word-break: keep-all">到期时间：</td><td style="word-break: break-all">{event.expiry_date.strftime('%Y-%m-%d %H:%M')}</td></tr>
+</table>
+</body>
+</html>
 """
                 send_result = send_email(event.email, subject, content, reminder_id)
                 if send_result:
