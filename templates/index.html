@@ -121,15 +121,42 @@
             color: #198754;
             background-color: #d1e7dd;
         }
+
+        .search-icon {
+            position: relative;
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background: url("{{ url_for('static', filename='search.png') }}") no-repeat center center;
+            background-size: contain;
+        }
+
+        /* 鼠标悬停效果 */
+        .btn:hover .search-icon {
+            color: #495057;
+        }
     </style>
 </head>
 <body>
 <div class="container mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <h4 class="mb-0">事件提醒助手</h4>
-        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEventModal">
-            添加新事件
-        </button>
+    <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">事件提醒助手</h4>
+            <div class="d-flex gap-2">
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center"
+                        id="searchButton" style="width: 32px; height: 31px;">
+                    <div class="search-icon"></div>
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
+                        data-bs-target="#addEventModal">
+                    添加新事件
+                </button>
+            </div>
+        </div>
+        <div class="mt-2" id="searchContainer" style="display: none;">
+            <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="搜索事件...">
+        </div>
     </div>
 
     <!-- 事件列表 -->
@@ -439,7 +466,41 @@
         const day = String(tomorrow.getDate()).padStart(2, '0');
         const dateStr = `${year}-${month}-${day}`;
         document.getElementById('expiry_date').value = dateStr;
-        // 加载事件列表
+        // 切换搜索框显示状态
+        const searchButton = document.getElementById('searchButton');
+        const searchInput = document.getElementById('searchInput');
+        let isSearchVisible = false;
+
+        // 切换搜索框显示状态
+        searchButton.addEventListener('click', function () {
+            isSearchVisible = !isSearchVisible;
+            const searchContainer = document.getElementById('searchContainer');
+            searchContainer.style.display = isSearchVisible ? 'block' : 'none';
+            if (isSearchVisible) {
+                searchInput.focus();
+            }
+        });
+
+        // 搜索事件处理
+        function filterEvents(searchText) {
+            const eventCards = document.querySelectorAll('.card');
+            searchText = searchText.toLowerCase();
+
+            eventCards.forEach(card => {
+                const title = card.querySelector('.card-title').textContent.toLowerCase();
+                if (title.includes(searchText)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // 监听搜索框输入事件
+        searchInput.addEventListener('input', function (e) {
+            filterEvents(e.target.value);
+        });
+
         loadEvents();
     });
 </script>
