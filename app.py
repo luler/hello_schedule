@@ -3,6 +3,7 @@ import smtplib
 from datetime import datetime, timedelta
 from email.header import Header
 from email.mime.text import MIMEText
+from email.utils import formataddr
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -64,7 +65,7 @@ def send_email(to_email, subject, content, reminder_id):
     try:
         msg = MIMEText(content, 'plain', 'utf-8')
         msg['Subject'] = Header(subject, 'utf-8')
-        msg['From'] = SMTP_USER
+        msg['From'] = formataddr((Header('事件提醒工具', 'utf-8'), SMTP_USER))
         msg['To'] = to_email
         msg['Message-ID'] = f"<{reminder_id}@schedule.system>"  # 添加邮件ID到头部
 
