@@ -477,7 +477,12 @@
             const searchContainer = document.getElementById('searchContainer');
             searchContainer.style.display = isSearchVisible ? 'block' : 'none';
             if (isSearchVisible) {
+                //搜索框可见
                 searchInput.focus();
+            } else {
+                //搜索框不可见，重置搜索
+                searchInput.value = '';
+                filterEvents(searchInput.value)
             }
         });
 
