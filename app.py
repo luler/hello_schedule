@@ -63,7 +63,7 @@ def generate_reminder_id(event_id):
 
 def send_email(to_email, subject, content, reminder_id):
     try:
-        msg = MIMEText(content, 'plain', 'utf-8')
+        msg = MIMEText(content, 'html', 'utf-8')
         msg['Subject'] = Header(subject, 'utf-8')
         msg['From'] = formataddr(('事件提醒工具', SMTP_USER))
         msg['To'] = to_email
