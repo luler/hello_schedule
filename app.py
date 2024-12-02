@@ -56,7 +56,7 @@ class Event(db.Model):
 
 def generate_reminder_id(event_id):
     """生成提醒邮件的唯一标识符"""
-    timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+    timestamp = datetime.now().strftime('%Y%m%d%H%M')
     return f"{timestamp}-{event_id}"
 
 
@@ -64,7 +64,7 @@ def send_email(to_email, subject, content, reminder_id):
     try:
         msg = MIMEText(content, 'plain', 'utf-8')
         msg['Subject'] = Header(subject, 'utf-8')
-        msg['From'] = f"事件提醒工具 <{SMTP_USER}>"
+        msg['From'] = "事件提醒工具"
         msg['To'] = to_email
         msg['Message-ID'] = f"<{reminder_id}@schedule.system>"  # 添加邮件ID到头部
 
@@ -141,11 +141,10 @@ def check_events():
                 continue
 
             reminder_id = generate_reminder_id(event.id)
-            subject = f"事件提醒: {event.title} [ID: {reminder_id}]"
+            subject = f"事件提醒: {event.title}"
             if should_send_reminder(event, current_time):
                 remaining = event.remaining_time
-                content = f"""
-<!DOCTYPE html>
+                content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -155,16 +154,16 @@ def check_events():
     <meta name="google" content="notranslate">
     <meta name="format-detection" content="telephone=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>' . $subject . '</title>
+    <title>{subject}</title>
 </head>
 <body>
 <table>
-<tr><td align="right" style="word-break: keep-all">距离到期还有：</td><td style="word-break: break-all">{remaining['days']}天{remaining['hours']}小时{remaining['minutes']}分钟</td></tr>
+<tr><td align="right" style="word-break: keep-all">距离到期：</td><td style="word-break: break-all">{remaining['days']}天{remaining['hours']}小时{remaining['minutes']}分钟</td></tr>
 <tr><td align="right" style="word-break: keep-all">到期时间：</td><td style="word-break: break-all">{event.expiry_date.strftime('%Y-%m-%d %H:%M')}</td></tr>
+<tr><td align="right" style="word-break: keep-all">消息ID：</td><td style="word-break: break-all">{reminder_id}</td></tr>
 </table>
 </body>
-</html>
-"""
+</html>"""
                 send_result = send_email(event.email, subject, content, reminder_id)
                 if send_result:
                     event.last_reminder_id = reminder_id
