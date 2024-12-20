@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 
+from tools.common_tool import print_log
+
 # 加载.env文件
 load_dotenv()
 
@@ -74,7 +76,7 @@ def send_email(to_email, subject, content, reminder_id):
             server.send_message(msg)
         return True
     except Exception as e:
-        print(f"发送邮件失败: {str(e)}")
+        print_log(f"发送邮件失败: {str(e)}")
         return False
 
 
@@ -169,9 +171,9 @@ def check_events():
                 if send_result:
                     event.last_reminder_id = reminder_id
                     db.session.commit()
-                print(f"{subject}，邮件发送结果: {'成功' if send_result else '失败'}")
+                print_log(f"{subject}，邮件发送结果: {'成功' if send_result else '失败'}")
             else:
-                print(f"{subject}，当前不需要发送提醒")
+                print_log(f"{subject}，当前不需要发送提醒")
 
 
 @app.route('/')
@@ -257,7 +259,6 @@ def update_event(event_id):
             event.title = data['title']
         if 'expiry_date' in data:
             expiry_date = datetime.strptime(data['expiry_date'], '%Y-%m-%d %H:%M')
-            print(expiry_date)
             event.expiry_date = expiry_date
         if 'reminder_days' in data:
             event.reminder_days = int(data['reminder_days'])
