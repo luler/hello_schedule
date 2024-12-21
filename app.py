@@ -253,13 +253,17 @@ def get_event(event_id):
 def update_event(event_id):
     event = Event.query.get_or_404(event_id)
     data = request.json
-
+    # 获取当前时间
+    current_time = datetime.now()
     try:
         if 'title' in data:
             event.title = data['title']
         if 'expiry_date' in data:
-            expiry_date = datetime.strptime(data['expiry_date'], '%Y-%m-%d %H:%M')
-            event.expiry_date = expiry_date
+            event.expiry_date = datetime.strptime(data['expiry_date'], '%Y-%m-%d %H:%M')
+            if event.expiry_date > current_time:
+                data['is_active'] = True
+            else:
+                data['is_active'] = False
         if 'reminder_days' in data:
             event.reminder_days = int(data['reminder_days'])
         if 'reminder_minutes' in data:
