@@ -144,7 +144,7 @@ def check_events():
                 continue
 
             reminder_id = generate_reminder_id(event.id)
-            subject = f"事件提醒: {event.title}"
+            subject = event.title
             if should_send_reminder(event, current_time):
                 remaining = event.remaining_time
                 content = f"""<!DOCTYPE html>
